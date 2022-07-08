@@ -43,7 +43,7 @@ impl Charge {
             .map(|e| {
                 let unit_acc = |x: f32, y: f32| {
                     if (y - x).abs() != 0. {
-                        k * get_sign(self.particle) * get_sign(e.particle)
+                        k * get_charge(self.particle) * get_charge(e.particle)
                             / ((y - x).abs() * self.mass)
                     } else {
                         0.
@@ -68,7 +68,7 @@ impl Charge {
     }
 }
 
-fn get_sign(particle: Particle) -> f32 {
+fn get_charge(particle: Particle) -> f32 {
     let q: f32 = 1.6 * 10f32.powf(-19.);
     match particle {
         Particle::Electron => -q,
