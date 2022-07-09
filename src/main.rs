@@ -1,36 +1,44 @@
 use glam::vec3;
+use macroquad::ui::{
+    hash, root_ui,
+    widgets::{self, Group},
+};
 use macroquad::{prelude::*, rand::gen_range};
 
 const MOVE_SPEED: f32 = 0.1;
 const LOOK_SPEED: f32 = 0.1;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 enum Particle {
     Electron,
     Proton,
     Neutron,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 struct Charge {
     particle: Particle,
     mass: f32,
     pos: Vec3,
     vel: Vec3,
     acc: Vec3,
+    trail: [Vec3; 50],
 }
 
 impl Charge {
     fn new(particle: Particle, pos: Option<Vec3>) -> Charge {
+        let pos = match pos {
+            Some(vec) => vec,
+            None => gen_random_vector(-10., 10.),
+        };
+
         Charge {
             particle,
             mass: get_mass(particle),
-            pos: match pos {
-                Some(vec) => vec,
-                None => gen_random_vector(-10., 10.),
-            },
+            pos,
             vel: vec3(0., 0., 0.),
             acc: vec3(0., 0., 0.),
+            trail: [pos; 50],
         }
     }
 
@@ -49,7 +57,10 @@ impl Charge {
                         0.
                     }
                 };
-                // println!("{:?}", (self.pos));
+                // println!(
+                //     "acc: {:?}, vec: {:?}, pos: {:?}",
+                //     self.acc, self.vel, self.pos
+                // );
 
                 vec3(
                     unit_acc(self.pos.x, e.pos.x),
@@ -100,10 +111,10 @@ fn gen_random_vector(start: f32, end: f32) -> Vec3 {
 fn conf() -> Conf {
     Conf {
         window_title: String::from("Rutherford Atomic Model"),
-        window_width: 1260,
-        window_height: 768,
+        window_width: 2360,
+        window_height: 1368,
         // high_dpi: true,
-        fullscreen: true,
+        // fullscreen: true,
         ..Default::default()
     }
 }
@@ -127,7 +138,7 @@ async fn main() {
     let mut right = front.cross(world_up).normalize();
     let mut up;
 
-    let mut position = vec3(0.0, 1.0, 0.0);
+    let mut position = vec3(0.0, 50.0, 0.0);
     let mut last_mouse_position: Vec2 = mouse_position().into();
 
     let mut grabbed = true;
@@ -135,8 +146,8 @@ async fn main() {
     show_mouse(false);
 
     let mut charge_vec = vec![
-        Charge::new(Particle::Electron, Some(vec3(100., 0., 0.))),
-        Charge::new(Particle::Proton, Some(vec3(-100., 0., 0.))),
+        Charge::new(Particle::Electron, Some(vec3(200., 00., 0.))),
+        Charge::new(Particle::Proton, Some(vec3(100., 0., 00.))),
     ];
 
     loop {
@@ -169,6 +180,15 @@ async fn main() {
         if is_key_down(KeyCode::LeftControl) {
             position.y -= MOVE_SPEED;
         }
+        if is_key_pressed(KeyCode::Key1) {
+            charge_vec.append(&mut vec![Charge::new(Particle::Electron, None)]);
+        }
+        if is_key_pressed(KeyCode::Key2) {
+            charge_vec.append(&mut vec![Charge::new(Particle::Proton, None)]);
+        }
+        if is_key_pressed(KeyCode::Key3) {
+            charge_vec.append(&mut vec![Charge::new(Particle::Neutron, None)]);
+        }
 
         let mouse_position: Vec2 = mouse_position().into();
         let mouse_delta = mouse_position - last_mouse_position;
@@ -196,7 +216,14 @@ async fn main() {
             switch = !switch;
         }
 
+        println!("{:?}", charge_vec.iter().count());
+
         clear_background(BLACK);
+
+        // !Implement UI
+        // widgets::Window::new(hash!(), vec2(10., 10.), vec2(100., 100.))
+        //     .label("A")
+        //     .ui(&mut *root_ui(), |ui| {});
 
         // 3D
         set_camera(&Camera3D {
@@ -212,11 +239,17 @@ async fn main() {
         for charge in &mut charge_vec {
             charge.update(&buffer);
             draw_sphere(charge.pos, 2., None, YELLOW);
-            println!("{:?}", charge.pos);
+
+            // for trail in charge.trail { //! Perf issues
+            //     draw_sphere_wires(trail, 0.1, None, GREEN);
+            // }
         }
 
         // Back to screen space, render some text
         set_default_camera();
+
+        let fps = get_fps();
+        draw_text(format!("{}", fps).as_str(), 10., 20., 30., GREEN);
 
         next_frame().await
     }
